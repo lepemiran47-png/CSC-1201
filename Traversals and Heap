@@ -1,0 +1,212 @@
+#include <iostream>
+#include <vector>
+using namespace std;
+
+// Structure representing a node in a Binomial Heap
+struct Node {
+    int data, degree;
+    Node *child, *sibling, *parent;
+
+    // Constructor initializes a single-node binomial tree
+    Node(int val) : data(val), degree(0), child(nullptr), sibling(nullptr), parent(nullptr) {}
+};
+
+class BinomialHeap {
+    Node* head = nullptr;
+
+    // Links two binomial trees of the same degree
+    // The tree with smaller value becomes the parent
+    Node* mergeTrees(Node* t1, Node* t2) {
+        if (t1->data > t2->data) swap(t1, t2);
+
+        t2->parent = t1;
+        t2->sibling = t1->child;
+        t1->child = t2;
+        t1->degree++;
+
+        return t1;
+    }
+
+    // Unites two binomial heaps into one heap (before fixing structure)
+    Node* unionHeaps(Node* h1, Node* h2) {
+        if (!h1) return h2;
+        if (!h2) return h1;
+
+        Node* head = nullptr, *tail = nullptr, *temp = nullptr;
+
+        // Merge root lists in increasing order of degree
+        while (h1 && h2) {
+            temp = (h1->degree <= h2->degree) ? h1 : h2;
+
+            if (temp == h1) h1 = h1->sibling;
+            else h2 = h2->sibling;
+
+            if (!head) head = tail = temp;
+            else {
+                tail->sibling = temp;
+                tail = temp;
+            }
+        }
+
+        // Attach remaining nodes
+        tail->sibling = h1 ? h1 : h2;
+
+        // Fix heap structure by linking trees of same degree
+        Node *prev = nullptr, *curr = head, *next = head->sibling;
+
+        while (next) {
+            // Case 1: Different degrees OR next-next has same degree as current
+            if (curr->degree != next->degree ||
+                (next->sibling && next->sibling->degree == curr->degree)) {
+                prev = curr;
+                curr = next;
+            }
+            // Case 2: Same degree → merge trees
+            else {
+                if (curr->data <= next->data) {
+                    curr->sibling = next->sibling;
+                    curr = mergeTrees(curr, next);
+                } else {
+                    if (!prev) head = next;
+                    else prev->sibling = next;
+
+                    curr = mergeTrees(next, curr);
+                }
+            }
+
+            next = curr->sibling;
+        }
+
+        return head;
+    }
+
+    // Inorder traversal (child → node → sibling style traversal)
+    void inorder(Node* n) {
+        if (n) {
+            inorder(n->child);
+            cout << n->data << " ";
+            inorder(n->sibling);
+        }
+    }
+
+    // Preorder traversal (node → child → sibling)
+    void preorder(Node* n) {
+        if (n) {
+            cout << n->data << " ";
+            preorder(n->child);
+            preorder(n->sibling);
+        }
+    }
+
+    // Postorder traversal (child → sibling → node)
+    void postorder(Node* n) {
+        if (n) {
+            postorder(n->child);
+            postorder(n->sibling);
+            cout << n->data << " ";
+        }
+    }
+
+public:
+    // Inserts a value into the binomial heap
+    void insert(int val) {
+        Node* newHeap = new Node(val);
+
+        BinomialHeap temp;
+        temp.head = newHeap;
+
+        head = unionHeaps(head, temp.head);
+    }
+
+    // Merges current heap with another heap
+    void merge(BinomialHeap& other) {
+        head = unionHeaps(head, other.head);
+        other.head = nullptr;
+    }
+
+    // Merges multiple heaps together
+    static BinomialHeap mergeMultiple(vector<BinomialHeap>& heaps) {
+        BinomialHeap result = heaps[0];
+
+        for (size_t i = 1; i < heaps.size(); i++) {
+            result.merge(heaps[i]);
+        }
+
+        return result;
+    }
+
+    // Public traversal functions
+    void inorderTraversal() {
+        cout << "Inorder: ";
+        inorder(head);
+        cout << endl;
+    }
+
+    void preorderTraversal() {
+        cout << "Preorder: ";
+        preorder(head);
+        cout << endl;
+    }
+
+    void postorderTraversal() {
+        cout << "Postorder: ";
+        postorder(head);
+        cout << endl;
+    }
+
+    // Checks if heap is empty
+    bool empty() {
+        return !head;
+    }
+};
+
+int main() {
+    BinomialHeap h1, h2, h3;
+    int choice, val;
+
+    do {
+        cout << "\n1-Ins1 2-Ins2 3-Ins3 4-Inorder 5-Preorder 6-Postorder\n";
+        cout << "7-Merge(2&3→1) 8-MergeAll 9-Exit\nChoice: ";
+        cin >> choice;
+
+        switch(choice) {
+            case 1: cin >> val; h1.insert(val); break;
+            case 2: cin >> val; h2.insert(val); break;
+            case 3: cin >> val; h3.insert(val); break;
+
+            case 4:
+                h1.inorderTraversal();
+                h2.inorderTraversal();
+                h3.inorderTraversal();
+                break;
+
+            case 5:
+                h1.preorderTraversal();
+                h2.preorderTraversal();
+                h3.preorderTraversal();
+                break;
+
+            case 6:
+                h1.postorderTraversal();
+                h2.postorderTraversal();
+                h3.postorderTraversal();
+                break;
+
+            case 7:
+                h1.merge(h2);
+                h1.merge(h3);
+                cout << "Merged!\n";
+                break;
+
+            case 8: {
+                vector<BinomialHeap> heaps = {h1, h2, h3};
+                BinomialHeap merged = BinomialHeap::mergeMultiple(heaps);
+                merged.inorderTraversal();
+                break;
+            }
+        }
+
+    } while(choice != 9);
+
+    return 0;
+}
